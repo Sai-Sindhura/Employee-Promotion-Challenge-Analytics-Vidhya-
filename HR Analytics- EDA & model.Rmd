@@ -1,0 +1,309 @@
+---
+title: "Final_Project_Sai Sindhura Poosarla"
+author: "Sai Sindhura Poosarla"
+date: "6/11/2020"
+output: word_document
+---
+
+## R Markdown
+
+```{r, include=TRUE}
+
+
+#read the train dataset
+emp <-  read.csv("Employee_data.csv")
+
+#dimension of the dataset
+dim(emp)
+
+#get column names
+names(emp)
+
+#structure
+str(emp)
+
+#Verify if there are any NA values
+sum(is.na(emp))
+
+# Summary statistics and also check which columns have NA values
+summary(emp,na.rm=TRUE)
+
+
+# Check the count distrubution against each rating and find out median
+table(emp$previous_year_rating)
+
+#Missing value treatment- replace NA values with median(rating 3)
+emp$previous_year_rating<- ifelse(is.na(emp$previous_year_rating), median(emp$previous_year_rating,na.rm=TRUE), emp$previous_year_rating)
+
+#Summary statistics after cleaning
+summary(emp,na.rm=TRUE)
+
+# To check the number of NA present after data cleaning
+sum(is.na(emp))
+
+#Data Preparation
+#Covert rating into categorical varaible
+emp$previous_year_rating <- as.factor(emp$previous_year_rating)
+
+#Covert is_promoted into categorical varaible
+emp$is_promoted <- as.factor(emp$is_promoted)
+
+#########Descriptive analytics################
+
+############Univariate analysis#######
+
+######continuous variables######
+
+library(ggplot2)
+
+#no_of_trainings
+ggplot(emp) + geom_histogram(aes(no_of_trainings), binwidth = 1, fill = "orange")
+
+#age
+ggplot(emp) + geom_histogram(aes(age), binwidth = 0.5, fill = "orange")
+
+#length_of_service
+ggplot(emp) + geom_histogram(aes(length_of_service), binwidth = 1, fill = "orange")
+
+#KPIs_met
+ggplot(emp) + geom_histogram(aes(KPIs_met..80.), binwidth = 0.5, fill = "orange")
+
+#awards_won
+ggplot(emp) + geom_histogram(aes(awards_won.), binwidth = 0.5, fill = "orange")
+
+#avg_training_score
+ggplot(emp) + geom_histogram(aes(avg_training_score), binwidth = 5, fill = "orange")
+
+######Categorical variables######
+
+#Department
+department_cat <- as.data.frame(table(emp$department))
+barplot(department_cat$Freq, names.arg=department_cat$Var1, xlab="Department",col='blue')
+
+#Region
+region_cat <- as.data.frame(table(emp$region))
+barplot(region_cat$Freq, names.arg=region_cat$Var1, xlab="Region",col='blue')
+
+#Education
+education_cat <- as.data.frame(table(emp$education))
+barplot(education_cat$Freq, names.arg=education_cat$Var1, xlab="Education",col='blue')
+
+#gender
+gender_cat <- as.data.frame(table(emp$gender))
+barplot(gender_cat$Freq, names.arg=gender_cat$Var1, xlab="Gender",col='blue')
+
+#Recruitment channel
+rec_cat <- as.data.frame(table(emp$recruitment_channel))
+barplot(rec_cat$Freq, names.arg=rec_cat$Var1, xlab="Recruitment channel",col='blue')
+
+#########Bivariate Analysis############
+
+library(ggplot2)
+
+#######Continuous variables#######
+
+#no_of_trainings
+ggplot(emp, aes(y = no_of_trainings,  x = is_promoted)) +geom_boxplot() +
+  labs(title = "number of trainings for promoted and non-promoted")
+
+#Age
+ggplot(emp, aes(y = age,  x = is_promoted)) +geom_boxplot() +
+  labs(title = "Age by promotion")
+
+#length of service
+ggplot(emp, 
+       aes(x = length_of_service, 
+           fill = is_promoted)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "length of service by promotion")
+
+
+#KPIs_met
+ggplot(emp, 
+       aes(x = KPIs_met..80., 
+           fill = is_promoted)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "KPI met by promotion")
+
+#average_training_score
+ggplot(emp, aes(y = avg_training_score,  x = is_promoted)) +geom_boxplot() +
+  labs(title = "Average training score by promotion")
+
+#####Categorical variables############
+
+#department
+ggplot(emp, aes(x = is_promoted, fill = department)) + geom_bar(position = position_dodge(preserve = "single"))
+
+#education
+ggplot(emp, aes(x = is_promoted, fill = education)) + geom_bar(position = "dodge")
+
+#previous year rating
+ggplot(emp, aes(x = is_promoted, fill = previous_year_rating)) + geom_bar(position = "dodge")
+
+#gender
+ggplot(emp, aes(x = is_promoted, fill = gender)) + geom_bar(position = "stack")
+
+#recruitment channel
+
+library(scales)
+ggplot(emp, 
+       aes(x = factor(recruitment_channel,
+                      levels = c("other","referred", "sourcing")),
+           fill = factor(is_promoted, 
+                         levels = c("0", "1"),
+                         labels = c("Promoted", 
+                                    "Non-Promoted" 
+                         )))) + 
+  geom_bar(position = "fill") +
+  scale_y_continuous(breaks = seq(0, 1, .2), 
+                     label = percent) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(y = "Percent", 
+       fill = "Promotion",
+       x = "recruitment channel",
+       title = "Promotion percentage in recruitment channels") +
+  theme_minimal()
+
+######Parition the data########### 
+
+#Set the seed
+set.seed(1)
+
+#Partition 60% of the data as train  data
+train <- sample(rownames(emp), dim(emp)[1]*0.6)
+
+#Partition 30% of the data as Validation data
+valid <- sample(setdiff(rownames(emp), train),
+                     dim(emp)[1]*0.3)
+
+# assign the remaining 10% as test data
+test <- setdiff(rownames(emp), union(train, valid))
+
+# create the train,validation and test data frames 
+train_df <- emp[train, ]
+valid_df <- emp[valid, ]
+test_df <- emp[test, ]
+
+#Check if the train data is balanced or not
+
+table(train_df$is_promoted)
+
+###########oversampling the data################
+library(ROSE)
+
+#There are 30083 records with class - 0 . The minority class(1) is sampled to get 30083 records.
+#total of 60166 records
+
+over_sampled_data <- ovun.sample(is_promoted ~ ., data = train_df, method = "over",N = 60166)$data
+
+#Verify the oversampling- equal number of 0 and 1
+table(over_sampled_data$is_promoted)
+
+##################Predictive Modeling#############
+
+#Predictive model- Classification model with target variable is_promoted
+
+input_var <- c("department","region","education","gender","recruitment_channel","no_of_trainings"
+           ,"age","previous_year_rating","length_of_service","KPIs_met..80.",
+           "awards_won.","avg_training_score","is_promoted")
+
+#########Logistic regression###############
+logistic_model <- glm(is_promoted ~ ., data=over_sampled_data[,input_var], family=binomial)
+summary(logistic_model)
+
+
+## Predicted values on test dataset
+predictions_lr <- predict(logistic_model,test_df[,input_var],type="response")
+
+#to find the auc of the model on the validation data
+library(ModelMetrics)
+auc(test_df$is_promoted, predictions_lr)
+
+#confusion matrix
+library(caret)
+library(lattice)
+library(ggplot2)
+
+predictions_lr_discrete <- ifelse((predictions_lr>0.5),1,0)
+caret::confusionMatrix(data = as.factor(predictions_lr_discrete), reference = test_df$is_promoted)
+
+#Add logistic model predictions to test data
+test_df$logistic_pred <- predictions_lr
+
+##########Decision Tree##########
+library(rpart)
+library(rpart.plot)
+
+#Classification tree
+tree_model <- rpart(is_promoted ~., data=over_sampled_data[,input_var], method = "class", model=TRUE)
+prp(tree_model, type = 1, extra = 1, under = TRUE, split.font = 1, varlen = -10)
+
+#Predictions
+prediction_tr <- predict(tree_model, test_df[,input_var], type="prob")[,2]
+prediction_tr_discrete <- as.factor(ifelse(prediction_tr > 0.5, 1, 0))
+caret ::confusionMatrix(prediction_tr_discrete, test_df$is_promoted)
+
+#AUC on test data by tree_model
+library(ModelMetrics)
+auc(test_df$is_promoted,prediction_tr)
+
+#Add tree model predictions to test data
+#prediction_tr_binary <- ifelse(prediction_tr > 0.5, 1, 0)
+test_df$tree_pred <- prediction_tr
+
+##########Neural Net############
+library("nnet")
+
+nnet_model = nnet(is_promoted ~ .
+                  , data = over_sampled_data[,input_var], size = 3, skip = TRUE, linout = FALSE)
+
+prediction_nnet <- predict(nnet_model,test_df[,input_var])
+prediction_nnet_discrete <- as.factor(ifelse(prediction_nnet > 0.5, 1, 0))
+caret ::confusionMatrix(prediction_nnet_discrete, test_df$is_promoted)
+
+#AUC on test data by tree_model
+library(ModelMetrics)
+auc(test_df$is_promoted,prediction_nnet)
+
+#Add tree model predictions to test data
+test_df$nnet_pred <- prediction_nnet
+
+###########Homogeneous Ensemble- Random Forest########
+library(randomForest)
+
+## Develop model using random forest classifier using  the oversampled train data
+rf <- randomForest(is_promoted ~ ., data = test_df[,input_var], ntree = 50,
+                   mtry=10, nodesize = 1000, importance = TRUE)
+
+## variable importance plot
+varImpPlot(rf, type = 1)
+
+## Predicted values on test dataset
+prediction_rf <- predict(rf,test_df[,input_var],data,type="prob")[,2]
+prediction_rf_discrete <- as.factor(ifelse(prediction_rf > 0.5, 1, 0))
+caret ::confusionMatrix(prediction_rf_discrete, test_df$is_promoted)
+
+#to find auc of the model 
+library(ModelMetrics)
+auc(test_df$is_promoted,prediction_rf)
+
+###########Heterogeneous Ensemble (Choosing the class predicted by majority classifiers)#####
+
+#Calculate the mean of the predicted probabilities of the three classifiers
+test_df$Ensemble_pred = (test_df$logistic_pred 
+                       + test_df$tree_pred 
+                       + test_df$nnet_pred)/3
+
+# At threshold of 0.5, less than 0.5 as zero and greater than 0.5 as 1
+Ensemble_pred_binary <- ifelse((test_df$Ensemble_pred>0.5),1,0)
+Ensemble_pred_discrete <- as.factor(ifelse(test_df$Ensemble_pred > 0.5, 1, 0))
+caret ::confusionMatrix(Ensemble_pred_discrete, test_df$is_promoted)
+
+#AUC on the test data
+library(ModelMetrics)
+auc(test_df$is_promoted,test_df$Ensemble_pred)
+
+
+
+```
+
